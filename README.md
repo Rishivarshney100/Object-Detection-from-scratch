@@ -246,26 +246,15 @@ python -m src.inference --model_path checkpoints/best_model.pth --image_path pat
 
 ```mermaid
 graph LR
-    A[Input Image<br/>224×224×3] --> B[Conv Block 1<br/>Conv 3×3<br/>3→64 channels<br/>BN + ReLU<br/>MaxPool 2×2<br/>112×112×64]
-    B --> C[Conv Block 2<br/>Conv 3×3<br/>64→128 channels<br/>BN + ReLU<br/>MaxPool 2×2<br/>56×56×128]
-    C --> D[Conv Block 3<br/>Conv 3×3<br/>128→256 channels<br/>BN + ReLU<br/>MaxPool 2×2<br/>28×28×256]
-    D --> E[Flatten<br/>28×28×256<br/>= 200,704]
-    E --> F[FC Layer<br/>200,704 → 512<br/>ReLU]
-    F --> G[Bbox Head<br/>FC: 512 → 40<br/>10 detections<br/>× 4 coords x,y,w,h]
-    F --> H[Class Head<br/>FC: 512 → 40<br/>10 detections<br/>× 4 classes]
-    G --> I[Output<br/>Bounding Boxes<br/>x, y, w, h]
-    H --> J[Output<br/>Class Scores<br/>person, car, dog, bg]
-    
-    style A fill:#e1f5ff
-    style B fill:#fff4e1
-    style C fill:#fff4e1
-    style D fill:#fff4e1
-    style E fill:#e8f5e9
-    style F fill:#e8f5e9
-    style G fill:#fce4ec
-    style H fill:#fce4ec
-    style I fill:#f3e5f5
-    style J fill:#f3e5f5
+    A["Input Image<br/>224x224x3"] --> B["Conv Block 1<br/>Conv 3x3<br/>3 to 64 channels<br/>BN + ReLU<br/>MaxPool 2x2<br/>112x112x64"]
+    B --> C["Conv Block 2<br/>Conv 3x3<br/>64 to 128 channels<br/>BN + ReLU<br/>MaxPool 2x2<br/>56x56x128"]
+    C --> D["Conv Block 3<br/>Conv 3x3<br/>128 to 256 channels<br/>BN + ReLU<br/>MaxPool 2x2<br/>28x28x256"]
+    D --> E["Flatten<br/>28x28x256<br/>200704 dims"]
+    E --> F["FC Layer<br/>200704 to 512<br/>ReLU"]
+    F --> G["Bbox Head<br/>FC: 512 to 40<br/>10 detections<br/>4 coords each"]
+    F --> H["Class Head<br/>FC: 512 to 40<br/>10 detections<br/>4 classes each"]
+    G --> I["Output<br/>Bounding Boxes<br/>x, y, w, h"]
+    H --> J["Output<br/>Class Scores<br/>person, car, dog, bg"]
 ```
 
 **Backbone:**
