@@ -5,12 +5,6 @@ __pycache__/
 *.so
 .Python
 
-# Model checkpoints
-checkpoints/
-*.pth
-*.pth.tar
-*.ckpt
-
 # Dataset
 data/voc2007/
 data/processed/

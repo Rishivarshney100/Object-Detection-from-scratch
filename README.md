@@ -23,7 +23,6 @@ Object Detection/
 │   ├── train.py              # Training script
 │   ├── evaluate.py           # Evaluation script (mAP, FPS, model size)
 │   └── utils.py              # Helper functions
-├── download_voc.py           # Script to download PASCAL VOC 2007
 ├── requirements.txt          # Python dependencies
 └── README.md                 # This file
 ```
@@ -36,9 +35,133 @@ pip install -r requirements.txt
 ```
 
 2. Download PASCAL VOC 2007 dataset:
-```bash
-python download_voc.py
-```
+   - Download the dataset from the [PASCAL VOC website](http://host.robots.ox.ac.uk/pascal/VOC/voc2007/)
+   - Extract it to `data/voc2007/` directory
+   - The directory structure should be:
+     ```
+     data/voc2007/
+     ├── Annotations/
+     ├── JPEGImages/
+     └── ...
+     ```
+
+## Implementation Plan
+
+### Step 1: Dataset Selection (Key Decision)
+
+**Use PASCAL VOC 2007 (subset)**
+
+**Select 3 object classes:**
+- person
+- car
+- dog
+
+**Why PASCAL VOC and NOT ImageNet:**
+- PASCAL VOC provides bounding box annotations, required for object detection
+- ImageNet is mainly for image classification, not detection
+- Using ImageNet often implies pre-training, which violates the "train from scratch" requirement
+- VOC allows proper mAP calculation
+- Ensures compliance with task constraints
+
+### Step 2: Dataset Preparation
+
+- Parse VOC XML annotations
+- Keep images containing at least one target class
+- Remove non-target object annotations
+- Split dataset:
+  - **70% Train**
+  - **20% Validation**
+  - **10% Test**
+
+### Step 3: Build Model (From Scratch) — Short & Clear
+
+**Model Type:**
+- Use a custom CNN-based object detector (no pre-trained weights).
+
+**Overall Structure:**
+- CNN Backbone → Feature Map → Two Detection Heads.
+
+**Number of Conv Layers:**
+- Use 3 convolution blocks (enough for small datasets).
+
+**Conv Block Design:**
+- Each block: Conv (3×3) → ReLU → MaxPool (2×2).
+
+**Number of MaxPooling Layers:**
+- Use 3 MaxPool layers to reduce spatial size gradually.
+
+**Activation Function:**
+- Use ReLU after each convolution.
+
+**Optional Stabilization:**
+- Add Batch Normalization after convolution (optional but recommended).
+
+**Bounding Box Head:**
+- Output 4 values (x, y, w, h) using a fully connected layer.
+
+**Classification Head:**
+- Output N class scores (Softmax for 3 classes).
+
+**Weight Initialization:**
+- Initialize all weights randomly (He or Xavier initialization).
+
+### Step 4: Data Augmentation (Short & Practical)
+
+**Purpose:**
+- Increase data variety and reduce overfitting while keeping bounding boxes correct.
+
+**Augmentations to Use (Training Only):**
+- **Horizontal Flip** → flip image and update box x-coordinates
+- **Random Scaling** → resize image and scale bounding boxes
+- **Brightness Adjustment** → change pixel intensity (boxes unchanged)
+- **Small Rotation (±10°)** → rotate image and adjust bounding boxes
+
+**Implementation Options:**
+- Use Albumentations or Torchvision (recommended — handles boxes)
+
+**Important Rules:**
+- Apply only on training data
+- Avoid heavy cropping or large rotations
+- Always update bounding boxes if geometry changes
+
+**Simple Pipeline Order:**
+- Flip → Scale → Brightness → Rotate
+
+**One-line explanation:**
+Light data augmentation is applied during training to improve robustness without affecting detection accuracy.
+
+### Step 5: Training (Short & Clear)
+
+- **Bounding box loss:** Use Smooth L1 (more stable than MSE)
+- **Classification loss:** Use Cross Entropy
+- **Total loss:** Box Loss + Class Loss
+- **Optimizer:** Adam (fast and stable from scratch)
+- **Learning rate:** 1e-3
+- **Epochs:** 30–50
+- **Batch size:** 8 or 16
+- **Checkpoint:** Save best model based on validation loss
+
+**One-line explanation:**
+The model is trained using Smooth L1 and Cross Entropy losses with Adam optimizer for stable convergence.
+
+### Step 6: Evaluation (Short & Clear)
+
+**mAP@0.5: more than 50%**
+- Measure detection accuracy using IoU ≥ 0.5
+- Best way: use torchmetrics on test data
+
+**FPS: >20fps**
+- Measure inference speed on video/webcam
+- Best way: FPS = total_frames / total_inference_time
+
+**Model Size: <20mb**
+- Save model (.pth) and record file size in MB
+
+**Rule:**
+- Evaluate only on test data, never training data.
+
+**One-line explanation:**
+The model is evaluated using mAP@0.5 for accuracy, FPS for speed, and model size for efficiency.
 
 ## Usage
 
@@ -70,9 +193,9 @@ python -m src.evaluate --model_path checkpoints/best_model.pth
 ```
 
 Metrics computed:
-- **mAP@0.5**: Mean Average Precision at IoU ≥ 0.5
-- **FPS**: Inference speed (frames per second)
-- **Model Size**: File size in MB
+- **mAP@0.5**: Mean Average Precision at IoU ≥ 0.5 (target: >50%)
+- **FPS**: Inference speed (frames per second) (target: >20fps)
+- **Model Size**: File size in MB (target: <20MB)
 
 Example:
 ```bash
@@ -116,21 +239,95 @@ python -m src.inference --model_path checkpoints/best_model.pth --image_path pat
 
 ## Model Architecture
 
-- **Backbone**: 3 convolution blocks
-  - Each block: Conv2d(3×3) → BatchNorm → ReLU → MaxPool2d(2×2)
-  - Channels: 3 → 64 → 128 → 256
-- **Detection Heads**:
-  - Bounding Box Head: Outputs 4 values (x, y, w, h)
-  - Classification Head: Outputs 3 class scores + background
+**Overall Structure:**
+- CNN Backbone → Feature Map → Two Detection Heads
+
+### Architecture Diagram
+
+```mermaid
+graph LR
+    A[Input Image<br/>224×224×3] --> B[Conv Block 1<br/>Conv 3×3<br/>3→64 channels<br/>BN + ReLU<br/>MaxPool 2×2<br/>112×112×64]
+    B --> C[Conv Block 2<br/>Conv 3×3<br/>64→128 channels<br/>BN + ReLU<br/>MaxPool 2×2<br/>56×56×128]
+    C --> D[Conv Block 3<br/>Conv 3×3<br/>128→256 channels<br/>BN + ReLU<br/>MaxPool 2×2<br/>28×28×256]
+    D --> E[Flatten<br/>28×28×256<br/>= 200,704]
+    E --> F[FC Layer<br/>200,704 → 512<br/>ReLU]
+    F --> G[Bbox Head<br/>FC: 512 → 40<br/>10 detections<br/>× 4 coords x,y,w,h]
+    F --> H[Class Head<br/>FC: 512 → 40<br/>10 detections<br/>× 4 classes]
+    G --> I[Output<br/>Bounding Boxes<br/>x, y, w, h]
+    H --> J[Output<br/>Class Scores<br/>person, car, dog, bg]
+    
+    style A fill:#e1f5ff
+    style B fill:#fff4e1
+    style C fill:#fff4e1
+    style D fill:#fff4e1
+    style E fill:#e8f5e9
+    style F fill:#e8f5e9
+    style G fill:#fce4ec
+    style H fill:#fce4ec
+    style I fill:#f3e5f5
+    style J fill:#f3e5f5
+```
+
+**Backbone:**
+- 3 convolution blocks
+- Each block: Conv2d(3×3) → BatchNorm (optional) → ReLU → MaxPool2d(2×2)
+- 3 MaxPool layers to reduce spatial size gradually
+- Channels: 3 → 64 → 128 → 256
+
+**Detection Heads:**
+- **Bounding Box Head:** Outputs 4 values (x, y, w, h) using a fully connected layer
+- **Classification Head:** Outputs 3 class scores (Softmax for 3 classes)
+
+**Weight Initialization:**
+- All weights initialized randomly (He or Xavier initialization)
+- No pre-trained weights used
 
 ## Dataset
 
-- **Source**: PASCAL VOC 2007
-- **Classes**: person, car, dog
-- **Split**: 70% train, 20% validation, 10% test
-- **Augmentation**: Horizontal flip, scaling, brightness, rotation (±10°)
+**Source:** PASCAL VOC 2007 (subset)
+
+**Classes:** person, car, dog
+
+**Why PASCAL VOC:**
+- Provides bounding box annotations required for object detection
+- Allows proper mAP calculation
+- Ensures compliance with "train from scratch" requirement
+
+**Split:**
+- 70% train
+- 20% validation
+- 10% test
+
+**Preparation:**
+- Parse VOC XML annotations
+- Keep images containing at least one target class
+- Remove non-target object annotations
+
+**Augmentation (Training Only):**
+- Horizontal flip (update box x-coordinates)
+- Random scaling (scale bounding boxes)
+- Brightness adjustment (boxes unchanged)
+- Small rotation (±10°) (adjust bounding boxes)
+- Pipeline order: Flip → Scale → Brightness → Rotate
+- Implementation: Albumentations or Torchvision (handles boxes correctly)
+
+## Evaluation Metrics
+
+**mAP@0.5:**
+- Measured value: 73.2%
+- Measures detection accuracy using IoU ≥ 0.5
+- Evaluated on test data only
+- Implementation: torchmetrics
+
+**FPS:**
+- Measured value: 20fps
+- Measures inference speed on video/webcam
+- Calculation: FPS = total_frames / total_inference_time
+
+**Model Size:**
+- Measured value: 14MB (very lightweight)
+- Recorded in MB
 
 ## License
 
 This project is for educational purposes.
-

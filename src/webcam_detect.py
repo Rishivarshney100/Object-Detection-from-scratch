@@ -1,7 +1,4 @@
-"""
-Real-time object detection using webcam.
-Detects person, car, and dog objects in live video feed.
-"""
+
 import torch
 import torch.nn as nn
 from pathlib import Path
@@ -40,14 +37,7 @@ def detect_objects_in_frame(
     score_threshold: float = 0.3,
     nms_threshold: float = 0.5
 ) -> tuple:
-    """
-    Run object detection on a video frame.
-    
-    Returns:
-        boxes: List of bounding boxes in pixel coordinates (x, y, w, h)
-        labels: List of class labels
-        scores: List of confidence scores
-    """
+
     model.eval()
     original_height, original_width = frame.shape[:2]
     
@@ -97,7 +87,6 @@ def draw_detections(
     scores: torch.Tensor,
     class_names: list
 ) -> np.ndarray:
-    """Draw bounding boxes and labels on frame."""
     if len(boxes) == 0:
         return frame
     
