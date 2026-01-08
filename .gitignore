@@ -12,6 +12,8 @@ data/processed/
 # Outputs
 webcam_outputs/
 outputs/
+checkpoints/
+*.pth
 *.jpg
 *.png
 

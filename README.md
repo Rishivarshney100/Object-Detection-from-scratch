@@ -193,9 +193,9 @@ python -m src.evaluate --model_path checkpoints/best_model.pth
 ```
 
 Metrics computed:
-- **mAP@0.5**: Mean Average Precision at IoU ≥ 0.5 (target: >50%)
-- **FPS**: Inference speed (frames per second) (target: >20fps)
-- **Model Size**: File size in MB (target: <20MB)
+- **mAP@0.5**: Mean Average Precision at IoU ≥ 0.5 
+- **FPS**: Inference speed (frames per second) 
+- **Model Size**: File size in MB
 
 Example:
 ```bash
@@ -223,18 +223,6 @@ python -m src.webcam_detect --model_path checkpoints/best_model.pth --score_thre
 
 # Display FPS
 python -m src.webcam_detect --model_path checkpoints/best_model.pth --fps_display
-```
-
-### Image Detection
-
-Detect objects in a single image or directory of images:
-```bash
-python -m src.inference --model_path checkpoints/best_model.pth --image_path path/to/image.jpg
-```
-
-For directory of images:
-```bash
-python -m src.inference --model_path checkpoints/best_model.pth --image_path path/to/images/
 ```
 
 ## Model Architecture

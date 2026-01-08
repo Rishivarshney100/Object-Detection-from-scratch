@@ -198,13 +198,42 @@ def main():
     print(f'Using device: {device}')
     
     print(f'Loading model from: {args.model_path}')
-    model = create_model(num_classes=3, input_size=args.input_size)
     
     checkpoint = torch.load(args.model_path, map_location=device)
+    
+    # Try to infer input_size from checkpoint
     if 'model_state_dict' in checkpoint:
-        model.load_state_dict(checkpoint['model_state_dict'])
+        state_dict = checkpoint['model_state_dict']
     else:
-        model.load_state_dict(checkpoint)
+        state_dict = checkpoint
+    
+    # Check feature_fc input dimension to infer original input_size
+    inferred_input_size = args.input_size
+    if 'feature_fc.weight' in state_dict:
+        feature_fc_input_dim = state_dict['feature_fc.weight'].shape[1]
+        # feature_dim = 256 * (input_size // 8) * (input_size // 8)
+        # So: (input_size // 8)^2 = feature_fc_input_dim / 256
+        feature_size_squared = feature_fc_input_dim / 256
+        if feature_size_squared > 0:
+            inferred_input_size = int((feature_size_squared ** 0.5) * 8)
+        
+        if inferred_input_size != args.input_size:
+            print(f'Warning: Checkpoint was saved with input_size={inferred_input_size}, but current model uses input_size={args.input_size}')
+            print(f'Using inferred input_size={inferred_input_size} for model and data loading')
+            args.input_size = inferred_input_size
+    
+    model = create_model(num_classes=3, input_size=args.input_size)
+    
+    # Load checkpoint with strict=False to handle any remaining mismatches
+    if 'model_state_dict' in checkpoint:
+        missing_keys, unexpected_keys = model.load_state_dict(checkpoint['model_state_dict'], strict=False)
+    else:
+        missing_keys, unexpected_keys = model.load_state_dict(checkpoint, strict=False)
+    
+    if missing_keys:
+        print(f'Warning: Missing keys in checkpoint: {missing_keys}')
+    if unexpected_keys:
+        print(f'Warning: Unexpected keys in checkpoint: {unexpected_keys}')
     
     model = model.to(device)
     model.eval()
