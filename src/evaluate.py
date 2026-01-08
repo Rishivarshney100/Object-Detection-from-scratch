@@ -1,6 +1,6 @@
 """
-Evaluation script for object detection model.
-Computes mAP@0.5, FPS, and model size.
+Evaluation script for object detection model
+Computes mAP@0.5, FPS, and model size
 """
 import torch
 import torch.nn as nn
@@ -25,24 +25,11 @@ def evaluate_map(
     iou_threshold: float = 0.5,
     score_threshold: float = 0.5
 ) -> float:
-    """
-    Evaluate model using mAP@0.5.
     
-    Args:
-        model: Trained model
-        dataloader: Test dataloader
-        device: Device to run on
-        iou_threshold: IoU threshold for mAP calculation
-        score_threshold: Score threshold for detections
-    
-    Returns:
-        mAP@0.5 value
-    """
     model.eval()
     
-    # Initialize mAP metric
     map_metric = MeanAveragePrecision(
-        box_format='cxcywh',  # Center x, center y, width, height
+        box_format='cxcywh',  
         iou_type='bbox',
         iou_thresholds=[iou_threshold]
     )
@@ -57,23 +44,17 @@ def evaluate_map(
             target_labels = batch['labels']
             original_sizes = batch['original_sizes']
             
-            # Forward pass
             pred_bboxes, pred_classes = model(images)
             
-            # Process each image in batch
             batch_size = images.size(0)
             for b in range(batch_size):
-                # Get predictions for this image
-                pred_boxes_b = pred_bboxes[b].cpu()  # (max_detections, 4)
-                pred_scores_b = torch.softmax(pred_classes[b], dim=1).cpu()  # (max_detections, num_classes+1)
+                pred_boxes_b = pred_bboxes[b].cpu()  
+                pred_scores_b = torch.softmax(pred_classes[b], dim=1).cpu()  
                 
-                # Get max class scores and indices (excluding background)
                 max_scores, class_indices = torch.max(pred_scores_b[:, :3], dim=1)
                 
-                # Filter by score threshold
                 valid_mask = max_scores >= score_threshold
                 if valid_mask.sum() == 0:
-                    # No valid detections
                     pred_dict = {
                         'boxes': torch.zeros((0, 4), dtype=torch.float),
                         'scores': torch.zeros((0,), dtype=torch.float),
@@ -84,14 +65,12 @@ def evaluate_map(
                     pred_scores_filtered = max_scores[valid_mask]
                     pred_labels_filtered = class_indices[valid_mask]
                     
-                    # Apply NMS
                     if len(pred_boxes_filtered) > 0:
                         keep_indices = nms(pred_boxes_filtered, pred_scores_filtered, iou_threshold=0.5)
                         pred_boxes_filtered = pred_boxes_filtered[keep_indices]
                         pred_scores_filtered = pred_scores_filtered[keep_indices]
                         pred_labels_filtered = pred_labels_filtered[keep_indices]
                     
-                    # Denormalize boxes to pixel coordinates
                     img_width, img_height = original_sizes[b]
                     pred_boxes_pixel = denormalize_boxes(
                         pred_boxes_filtered, img_width, img_height
@@ -103,12 +82,10 @@ def evaluate_map(
                         'labels': pred_labels_filtered
                     }
                 
-                # Get targets for this image
                 target_boxes_b = target_boxes[b].cpu()
                 target_labels_b = target_labels[b].cpu()
                 
                 if len(target_boxes_b) > 0:
-                    # Denormalize target boxes
                     img_width, img_height = original_sizes[b]
                     target_boxes_pixel = denormalize_boxes(
                         target_boxes_b, img_width, img_height
@@ -124,10 +101,8 @@ def evaluate_map(
                         'labels': torch.zeros((0,), dtype=torch.long)
                     }
                 
-                # Update metric
                 map_metric.update([pred_dict], [target_dict])
     
-    # Compute mAP
     map_result = map_metric.compute()
     map_value = map_result['map'].item()
     
@@ -141,22 +116,9 @@ def evaluate_fps(
     num_warmup: int = 10,
     num_runs: int = 100
 ) -> float:
-    """
-    Evaluate inference speed (FPS).
     
-    Args:
-        model: Trained model
-        dataloader: Test dataloader
-        device: Device to run on
-        num_warmup: Number of warmup runs
-        num_runs: Number of runs for FPS calculation
-    
-    Returns:
-        FPS (frames per second)
-    """
     model.eval()
     
-    # Warmup
     print(f'Warming up ({num_warmup} runs)...')
     with torch.no_grad():
         for i, batch in enumerate(dataloader):
@@ -165,11 +127,9 @@ def evaluate_fps(
             images = batch['images'].to(device)
             _ = model(images)
     
-    # Synchronize GPU if using CUDA
     if device.type == 'cuda':
         torch.cuda.synchronize()
     
-    # Measure inference time
     print(f'Measuring FPS ({num_runs} runs)...')
     total_time = 0.0
     total_frames = 0
@@ -182,7 +142,6 @@ def evaluate_fps(
             images = batch['images'].to(device)
             batch_size = images.size(0)
             
-            # Measure time
             if device.type == 'cuda':
                 torch.cuda.synchronize()
             
@@ -198,22 +157,13 @@ def evaluate_fps(
             total_time += elapsed
             total_frames += batch_size
     
-    # Calculate FPS
     fps = total_frames / total_time if total_time > 0 else 0.0
     
     return fps
 
 
 def get_model_size(model_path: Path) -> float:
-    """
-    Get model file size in MB.
     
-    Args:
-        model_path: Path to model checkpoint
-    
-    Returns:
-        Model size in MB
-    """
     if not model_path.exists():
         raise FileNotFoundError(f"Model file not found: {model_path}")
     
@@ -244,11 +194,9 @@ def main():
     
     args = parser.parse_args()
     
-    # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f'Using device: {device}')
     
-    # Load model
     print(f'Loading model from: {args.model_path}')
     model = create_model(num_classes=3, input_size=args.input_size)
     
@@ -261,11 +209,9 @@ def main():
     model = model.to(device)
     model.eval()
     
-    # Create test dataloader
     print('Loading test dataset...')
     voc_dir = Path(args.data_dir)
     
-    # Load saved splits
     import pickle
     processed_dir = voc_dir.parent / 'processed'
     if (processed_dir / 'test_set.pkl').exists():
@@ -289,7 +235,6 @@ def main():
             pin_memory=True
         )
     else:
-        # Create dataloaders (will create splits)
         _, _, test_loader = create_dataloaders(
             voc_dir=voc_dir,
             batch_size=args.batch_size,
@@ -301,7 +246,6 @@ def main():
     print('EVALUATION RESULTS')
     print('=' * 60)
     
-    # 1. mAP@0.5
     if not args.skip_map:
         print('\n1. Computing mAP@0.5...')
         map_value = evaluate_map(
@@ -312,7 +256,6 @@ def main():
         map_value = None
         print('\n1. mAP@0.5: Skipped')
     
-    # 2. FPS
     if not args.skip_fps:
         print('\n2. Computing FPS...')
         fps = evaluate_fps(model, test_loader, device)
@@ -321,13 +264,11 @@ def main():
         fps = None
         print('\n2. FPS: Skipped')
     
-    # 3. Model Size
     print('\n3. Computing model size...')
     model_path = Path(args.model_path)
     model_size = get_model_size(model_path)
     print(f'   Model Size: {model_size:.2f} MB')
     
-    # Summary
     print('\n' + '=' * 60)
     print('SUMMARY')
     print('=' * 60)

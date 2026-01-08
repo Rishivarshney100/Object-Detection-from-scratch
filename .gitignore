@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Model checkpoints
+checkpoints/
+*.pth
+*.pth.tar
+*.ckpt
+
+# Dataset
+data/voc2007/
+data/processed/
+
+# Outputs
+webcam_outputs/
+outputs/
+*.jpg
+*.png
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+venv/
+env/
+.venv
+

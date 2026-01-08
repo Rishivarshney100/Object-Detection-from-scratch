@@ -1,4 +1,4 @@
 """
-Object Detection from Scratch package.
+Object Detection from Scratch
 """
 

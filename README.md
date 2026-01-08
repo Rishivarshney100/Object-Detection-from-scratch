@@ -66,7 +66,7 @@ python src/train.py --batch_size 16 --epochs 30 --lr 0.001
 
 Evaluate the trained model:
 ```bash
-python src/evaluate.py --model_path checkpoints/best_model.pth
+python -m src.evaluate --model_path checkpoints/best_model.pth
 ```
 
 Metrics computed:
@@ -76,7 +76,42 @@ Metrics computed:
 
 Example:
 ```bash
-python src/evaluate.py --model_path checkpoints/best_model.pth --batch_size 8
+python -m src.evaluate --model_path checkpoints/best_model.pth --batch_size 8
+```
+
+### Real-time Webcam Detection
+
+Run live object detection using your webcam:
+```bash
+python -m src.webcam_detect --model_path checkpoints/best_model.pth
+```
+
+**Controls:**
+- Press `q` to quit
+- Press `s` to save current frame with detections
+
+**Options:**
+```bash
+# Use different camera (if you have multiple)
+python -m src.webcam_detect --model_path checkpoints/best_model.pth --camera 1
+
+# Adjust detection threshold (lower = more detections, may include false positives)
+python -m src.webcam_detect --model_path checkpoints/best_model.pth --score_threshold 0.2
+
+# Display FPS
+python -m src.webcam_detect --model_path checkpoints/best_model.pth --fps_display
+```
+
+### Image Detection
+
+Detect objects in a single image or directory of images:
+```bash
+python -m src.inference --model_path checkpoints/best_model.pth --image_path path/to/image.jpg
+```
+
+For directory of images:
+```bash
+python -m src.inference --model_path checkpoints/best_model.pth --image_path path/to/images/
 ```
 
 ## Model Architecture

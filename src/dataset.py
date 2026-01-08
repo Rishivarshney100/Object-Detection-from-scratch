@@ -1,5 +1,5 @@
 """
-PASCAL VOC 2007 dataset parser and PyTorch Dataset class.
+PASCAL VOC 2007 dataset parser and PyTorch Dataset class
 """
 import os
 import xml.etree.ElementTree as ET
@@ -12,40 +12,27 @@ from torch.utils.data import Dataset, DataLoader
 import random
 from collections import defaultdict
 
-# Target classes
 TARGET_CLASSES = ['person', 'car', 'dog']
 CLASS_TO_IDX = {cls: idx for idx, cls in enumerate(TARGET_CLASSES)}
 
 
 def parse_voc_xml(xml_path: Path) -> Dict:
-    """
-    Parse PASCAL VOC XML annotation file.
     
-    Args:
-        xml_path: Path to XML annotation file
-    
-    Returns:
-        Dictionary with image info and annotations
-    """
     tree = ET.parse(xml_path)
     root = tree.getroot()
     
-    # Get image info
     filename = root.find('filename').text
     size = root.find('size')
     width = int(size.find('width').text)
     height = int(size.find('height').text)
     
-    # Parse objects
     objects = []
     for obj in root.findall('object'):
-        # Skip difficult objects
         difficult = obj.find('difficult')
         if difficult is not None and int(difficult.text) == 1:
             continue
         
         class_name = obj.find('name').text
-        # Only keep target classes
         if class_name not in TARGET_CLASSES:
             continue
         
@@ -55,7 +42,6 @@ def parse_voc_xml(xml_path: Path) -> Dict:
         x_max = float(bbox.find('xmax').text)
         y_max = float(bbox.find('ymax').text)
         
-        # Convert to normalized (x, y, w, h) format
         x = ((x_min + x_max) / 2) / width
         y = ((y_min + y_max) / 2) / height
         w = (x_max - x_min) / width
@@ -64,7 +50,7 @@ def parse_voc_xml(xml_path: Path) -> Dict:
         objects.append({
             'class': class_name,
             'class_id': CLASS_TO_IDX[class_name],
-            'bbox': [x, y, w, h]  # Normalized
+            'bbox': [x, y, w, h]  
         })
     
     return {
@@ -76,15 +62,7 @@ def parse_voc_xml(xml_path: Path) -> Dict:
 
 
 def load_voc_dataset(voc_dir: Path) -> List[Dict]:
-    """
-    Load all VOC annotations and filter for target classes.
     
-    Args:
-        voc_dir: Path to VOC2007 directory
-    
-    Returns:
-        List of image annotations
-    """
     annotations_dir = voc_dir / 'Annotations'
     jpeg_dir = voc_dir / 'JPEGImages'
     
@@ -102,9 +80,7 @@ def load_voc_dataset(voc_dir: Path) -> List[Dict]:
         try:
             annotation = parse_voc_xml(xml_path)
             
-            # Only keep images with at least one target class
             if len(annotation['objects']) > 0:
-                # Verify image exists
                 img_path = jpeg_dir / annotation['filename']
                 if img_path.exists():
                     annotation['image_path'] = img_path
@@ -124,29 +100,15 @@ def split_dataset(
     test_ratio: float = 0.1,
     seed: int = 42
 ) -> Tuple[List[Dict], List[Dict], List[Dict]]:
-    """
-    Split dataset into train, validation, and test sets.
     
-    Args:
-        dataset: List of image annotations
-        train_ratio: Training set ratio
-        val_ratio: Validation set ratio
-        test_ratio: Test set ratio
-        seed: Random seed for reproducibility
-    
-    Returns:
-        Tuple of (train, val, test) datasets
-    """
     assert abs(train_ratio + val_ratio + test_ratio - 1.0) < 1e-6, "Ratios must sum to 1.0"
     
     random.seed(seed)
     np.random.seed(seed)
     
-    # Shuffle dataset
     shuffled = dataset.copy()
     random.shuffle(shuffled)
     
-    # Calculate split indices
     n_total = len(shuffled)
     n_train = int(n_total * train_ratio)
     n_val = int(n_total * val_ratio)
@@ -164,9 +126,6 @@ def split_dataset(
 
 
 class VOCDataset(Dataset):
-    """
-    PyTorch Dataset for PASCAL VOC object detection.
-    """
     
     def __init__(
         self,
@@ -174,14 +133,7 @@ class VOCDataset(Dataset):
         transform=None,
         input_size: int = 224
     ):
-        """
-        Initialize VOC dataset.
         
-        Args:
-            annotations: List of image annotations
-            transform: Optional transform function (from augmentation.py)
-            input_size: Target input size for images
-        """
         self.annotations = annotations
         self.transform = transform
         self.input_size = input_size
@@ -190,36 +142,23 @@ class VOCDataset(Dataset):
         return len(self.annotations)
     
     def __getitem__(self, idx: int) -> Dict:
-        """
-        Get a single sample.
         
-        Returns:
-            Dictionary with:
-                - image: Tensor of shape (3, H, W)
-                - boxes: List of boxes in format (x, y, w, h) normalized
-                - labels: List of class indices
-                - original_size: Tuple of (width, height)
-        """
         ann = self.annotations[idx]
         
-        # Load image
         img_path = ann['image_path']
         image = Image.open(img_path).convert('RGB')
         image_np = np.array(image)
         
-        # Get bounding boxes and labels
         boxes = [obj['bbox'] for obj in ann['objects']]
         labels = [obj['class_id'] for obj in ann['objects']]
         
         original_size = (ann['width'], ann['height'])
         
-        # Apply augmentation if provided
         if self.transform is not None:
             image_tensor, boxes, labels = self.transform(
                 image_np, boxes, labels, original_size
             )
         else:
-            # Just convert to tensor and normalize
             from src.augmentation import get_val_augmentation
             val_aug = get_val_augmentation(self.input_size)
             augmented = val_aug(
@@ -230,7 +169,6 @@ class VOCDataset(Dataset):
                 labels=labels
             )
             image_tensor = augmented['image']
-            # Convert back to normalized format
             new_h, new_w = image_tensor.shape[1], image_tensor.shape[2]
             boxes = [[(x1+x2)/2/new_w, (y1+y2)/2/new_h, (x2-x1)/new_w, (y2-y1)/new_h]
                     for x1, y1, x2, y2 in augmented['bboxes']]
@@ -245,15 +183,7 @@ class VOCDataset(Dataset):
 
 
 def collate_fn(batch: List[Dict]) -> Dict:
-    """
-    Custom collate function for batching variable number of objects per image.
     
-    Args:
-        batch: List of samples from dataset
-    
-    Returns:
-        Batched dictionary
-    """
     images = torch.stack([item['image'] for item in batch])
     boxes = [item['boxes'] for item in batch]
     labels = [item['labels'] for item in batch]
@@ -261,8 +191,8 @@ def collate_fn(batch: List[Dict]) -> Dict:
     
     return {
         'images': images,
-        'boxes': boxes,  # List of tensors (variable length)
-        'labels': labels,  # List of tensors (variable length)
+        'boxes': boxes,  
+        'labels': labels,  
         'original_sizes': original_sizes
     }
 
@@ -274,26 +204,11 @@ def create_dataloaders(
     num_workers: int = 0,
     seed: int = 42
 ) -> Tuple[DataLoader, DataLoader, DataLoader]:
-    """
-    Create train, validation, and test dataloaders.
     
-    Args:
-        voc_dir: Path to VOC2007 directory
-        batch_size: Batch size
-        input_size: Input image size
-        num_workers: Number of data loading workers
-        seed: Random seed
-    
-    Returns:
-        Tuple of (train_loader, val_loader, test_loader)
-    """
-    # Load dataset
     dataset = load_voc_dataset(voc_dir)
     
-    # Split dataset
     train_set, val_set, test_set = split_dataset(dataset, seed=seed)
     
-    # Save splits for later use
     processed_dir = voc_dir.parent / 'processed'
     processed_dir.mkdir(exist_ok=True)
     
@@ -305,7 +220,6 @@ def create_dataloaders(
     with open(processed_dir / 'test_set.pkl', 'wb') as f:
         pickle.dump(test_set, f)
     
-    # Create datasets
     from src.augmentation import get_train_augmentation, get_val_augmentation, apply_augmentation
     
     def train_transform(img, boxes, labels, orig_size):
@@ -320,7 +234,6 @@ def create_dataloaders(
     val_dataset = VOCDataset(val_set, transform=val_transform, input_size=input_size)
     test_dataset = VOCDataset(test_set, transform=val_transform, input_size=input_size)
     
-    # Create dataloaders
     train_loader = DataLoader(
         train_dataset,
         batch_size=batch_size,
