@@ -302,8 +302,7 @@ graph LR
 - Calculation: FPS = total_frames / total_inference_time
 
 **Model Size:**
-- Measured value: 14MB (very lightweight)
-- Recorded in MB
+- Measured value: 1.1GB
 
 ## License
 
