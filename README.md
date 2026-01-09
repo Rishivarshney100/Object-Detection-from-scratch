@@ -182,7 +182,7 @@ Training parameters (can be customized via command-line arguments):
 
 Example with custom parameters:
 ```bash
-python src/train.py --batch_size 16 --epochs 30 --lr 0.001
+python -m src.train --input_size 224 --epochs 50 --batch_size 8
 ```
 
 ### Evaluation
