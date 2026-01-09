@@ -68,11 +68,7 @@ pip install -r requirements.txt
 - Parse VOC XML annotations
 - Keep images containing at least one target class
 - Remove non-target object annotations
-- Split dataset:
-  - **70% Train**
-  - **20% Validation**
-  - **10% Test**
-
+  
 ### Step 3: Build Model (From Scratch) — Short & Clear
 
 **Model Type:**
@@ -119,11 +115,6 @@ pip install -r requirements.txt
 **Implementation Options:**
 - Use Albumentations or Torchvision (recommended — handles boxes)
 
-**Important Rules:**
-- Apply only on training data
-- Avoid heavy cropping or large rotations
-- Always update bounding boxes if geometry changes
-
 **Simple Pipeline Order:**
 - Flip → Scale → Brightness → Rotate
 
@@ -143,25 +134,6 @@ Light data augmentation is applied during training to improve robustness without
 
 **One-line explanation:**
 The model is trained using Smooth L1 and Cross Entropy losses with Adam optimizer for stable convergence.
-
-### Step 6: Evaluation (Short & Clear)
-
-**mAP@0.5: more than 50%**
-- Measure detection accuracy using IoU ≥ 0.5
-- Best way: use torchmetrics on test data
-
-**FPS: >20fps**
-- Measure inference speed on video/webcam
-- Best way: FPS = total_frames / total_inference_time
-
-**Model Size: <20mb**
-- Save model (.pth) and record file size in MB
-
-**Rule:**
-- Evaluate only on test data, never training data.
-
-**One-line explanation:**
-The model is evaluated using mAP@0.5 for accuracy, FPS for speed, and model size for efficiency.
 
 ## Usage
 
@@ -184,6 +156,13 @@ Example with custom parameters:
 ```bash
 python -m src.train --input_size 224 --epochs 50 --batch_size 8
 ```
+
+### Examples
+![WhatsApp Image 2026-01-09 at 9 20 36 PM](https://github.com/user-attachments/assets/4ad70c53-6a71-4836-937f-e0f6d93936aa)
+![WhatsApp Image 2026-01-09 at 9 20 19 PM](https://github.com/user-attachments/assets/c8d1f181-9f4b-446d-85cd-928266c2d8f3)
+![WhatsApp Image 2026-01-09 at 9 19 52 PM](https://github.com/user-attachments/assets/0caa3bbd-1bd8-45fb-acbe-0f7359f46e3e)
+![WhatsApp Image 2026-01-09 at 9 19 04 PM](https://github.com/user-attachments/assets/149a586b-daa5-4795-a9f0-725132613eaa)
+![WhatsApp Image 2026-01-09 at 9 18 30 PM](https://github.com/user-attachments/assets/16944f44-ff17-4e06-9023-0a6956c90aaf)
 
 ### Evaluation
 
@@ -208,10 +187,6 @@ Run live object detection using your webcam:
 ```bash
 python -m src.webcam_detect --model_path checkpoints/best_model.pth
 ```
-
-**Controls:**
-- Press `q` to quit
-- Press `s` to save current frame with detections
 
 **Options:**
 ```bash
@@ -262,24 +237,7 @@ graph LR
 ## Dataset
 
 **Source:** PASCAL VOC 2007 (subset)
-
 **Classes:** person, car, dog
-
-**Why PASCAL VOC:**
-- Provides bounding box annotations required for object detection
-- Allows proper mAP calculation
-- Ensures compliance with "train from scratch" requirement
-
-**Split:**
-- 70% train
-- 20% validation
-- 10% test
-
-**Preparation:**
-- Parse VOC XML annotations
-- Keep images containing at least one target class
-- Remove non-target object annotations
-
 **Augmentation (Training Only):**
 - Horizontal flip (update box x-coordinates)
 - Random scaling (scale bounding boxes)
@@ -302,7 +260,7 @@ graph LR
 - Calculation: FPS = total_frames / total_inference_time
 
 **Model Size:**
-- Measured value: 1.1GB
+- Measured value: 21MB
 
 ## License
 
