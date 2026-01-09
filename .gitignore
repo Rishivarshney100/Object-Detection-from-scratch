@@ -16,6 +16,14 @@ checkpoints/
 *.pth
 *.jpg
 *.png
+*.jpeg
+
+# Allow sample_images directory
+!sample_images/
+!sample_images/output/
+!sample_images/*.jpg
+!sample_images/*.png
+!sample_images/*.jpeg
 
 # IDE
 .vscode/

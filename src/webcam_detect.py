@@ -90,8 +90,8 @@ def draw_detections(
     if len(boxes) == 0:
         return frame
     
-    # Use white color for all boxes
-    box_color = (255, 255, 255)
+    # Use bright lime-green color for bounding boxes (BGR format)
+    box_color = (0, 255, 0)  # Bright lime-green
     
     for box, label, score in zip(boxes, labels, scores):
         # Get box coordinates (center format: x, y, w, h)
@@ -106,7 +106,7 @@ def draw_detections(
         x2 = int(x + w/2)
         y2 = int(y + h/2)
         
-        # Clamp to frame bounds (but don't restrict movement)
+        # Clamp to frame bounds
         x1 = max(0, min(x1, frame.shape[1] - 1))
         y1 = max(0, min(y1, frame.shape[0] - 1))
         x2 = max(x1 + 1, min(x2, frame.shape[1]))
@@ -116,56 +116,53 @@ def draw_detections(
         class_name = class_names[label_idx]
         score_val = score.item() if isinstance(score, torch.Tensor) else score
         
-        # Draw bounding box
+        # Draw bright lime-green bounding box with thicker line
         cv2.rectangle(frame, (x1, y1), (x2, y2), box_color, 3)
         
-        # Prepare label text - show class name prominently
-        label_text = f"{class_name.upper()}"
-        confidence_text = f"{score_val:.1%}"
+        # Prepare label text in format "Car : 97%"
+        label_text = f"{class_name.capitalize()} : {int(score_val * 100)}%"
         
-        # Get text sizes
+        # Get text size
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.7
+        thickness = 2
         (text_width, text_height), baseline = cv2.getTextSize(
-            label_text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 3
-        )
-        (conf_width, conf_height), _ = cv2.getTextSize(
-            confidence_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2
+            label_text, font, font_scale, thickness
         )
         
-        # Draw label background (black with transparency effect)
-        label_bg_height = text_height + conf_height + 20
-        label_bg_width = max(text_width, conf_width) + 20
+        # Calculate label position (above the box, slightly to the right of center)
+        label_x = x1 + (x2 - x1) // 4  # Position slightly to the right
+        label_y = y1 - 10
         
-        # Draw semi-transparent background
-        overlay = frame.copy()
-        cv2.rectangle(
-            overlay,
-            (x1, y1 - label_bg_height),
-            (x1 + label_bg_width, y1),
-            (0, 0, 0),
-            -1
-        )
-        cv2.addWeighted(overlay, 0.7, frame, 0.3, 0, frame)
+        # Ensure label doesn't go off screen
+        if label_y < text_height + 10:
+            label_y = y2 + text_height + 10  # Put below box if no room above
         
-        # Draw class name (large, white, bold)
+        # Draw black rectangular background for label
+        padding = 8
+        bg_x1 = label_x - padding
+        bg_y1 = label_y - text_height - padding
+        bg_x2 = label_x + text_width + padding
+        bg_y2 = label_y + baseline + padding
+        
+        # Ensure background stays within image bounds
+        bg_x1 = max(0, bg_x1)
+        bg_y1 = max(0, bg_y1)
+        bg_x2 = min(frame.shape[1], bg_x2)
+        bg_y2 = min(frame.shape[0], bg_y2)
+        
+        # Draw solid black background
+        cv2.rectangle(frame, (bg_x1, bg_y1), (bg_x2, bg_y2), (0, 0, 0), -1)
+        
+        # Draw white text on black background
         cv2.putText(
             frame,
             label_text,
-            (x1 + 10, y1 - conf_height - 10),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1.0,
-            (255, 255, 255),
-            3
-        )
-        
-        # Draw confidence score (smaller, below class name)
-        cv2.putText(
-            frame,
-            confidence_text,
-            (x1 + 10, y1 - 5),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.7,
-            (200, 200, 200),
-            2
+            (label_x, label_y),
+            font,
+            font_scale,
+            (255, 255, 255),  # White text
+            thickness
         )
     
     return frame
